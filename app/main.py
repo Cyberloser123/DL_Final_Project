@@ -28,6 +28,7 @@ parser.add_argument(
 def process_main(rank, fname, world_size, devices):
     import os
     os.environ['CUDA_VISIBLE_DEVICES'] = str(devices[rank].split(':')[-1])
+    
 
     import logging
     from src.utils.logging import get_logger
@@ -44,6 +45,8 @@ def process_main(rank, fname, world_size, devices):
     with open(fname, 'r') as y_file:
         params = yaml.load(y_file, Loader=yaml.FullLoader)
         logger.info('loaded params...')
+
+    os.makedirs(params['logging']['folder'], exist_ok=True)
 
     # Log config
     if rank == 0:
