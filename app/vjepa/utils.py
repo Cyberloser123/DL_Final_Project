@@ -15,6 +15,7 @@ import torch
 
 import src.models.vision_transformer as video_vit
 import src.models.predictor as vit_pred
+from src.models.dynamic_tanh import convert_ln_to_dyt
 from src.models.utils.multimask import MultiMaskWrapper, PredictorMultiMaskWrapper
 from src.utils.schedulers import (
     WarmupCosineSchedule,
@@ -106,6 +107,7 @@ def init_video_model(
         uniform_power=uniform_power,
         use_sdpa=use_sdpa,
     )
+    encoder = convert_ln_to_dyt(encoder)
     encoder = MultiMaskWrapper(encoder)
     predictor = vit_pred.__dict__['vit_predictor'](
         img_size=crop_size,
@@ -122,6 +124,7 @@ def init_video_model(
         zero_init_mask_tokens=zero_init_mask_tokens,
         use_sdpa=use_sdpa,
     )
+    predictor = convert_ln_to_dyt(predictor)
     predictor = PredictorMultiMaskWrapper(predictor)
 
     def init_weights(m):
