@@ -26,6 +26,7 @@ import torch.multiprocessing as mp
 import torch.nn.functional as F
 from torch.nn.parallel import DistributedDataParallel
 
+from src.utils.wandb import WandbLogger
 from src.datasets.data_manager import init_data
 from src.masks.random_tube import MaskCollator as TubeMaskCollator
 from src.masks.multiblock3d import MaskCollator as MB3DMaskCollator
@@ -155,6 +156,7 @@ def main(args, resume_preempt=False):
     cfgs_logging = args.get('logging')
     folder = cfgs_logging.get('folder')
     tag = cfgs_logging.get('write_tag')
+    wandb_logger = WandbLogger(args)
 
     # ----------------------------------------------------------------------- #
     # ----------------------------------------------------------------------- #
@@ -541,6 +543,14 @@ def main(args, resume_preempt=False):
                            torch.cuda.max_memory_allocated() / 1024.0**2,
                            gpu_time_meter.avg,
                            wall_time_meter.avg))
+                    
+                    wandb_logger.log({
+                        'loss': loss_meter.avg,
+                        'loss_jepa': jepa_loss_meter.avg,
+                        'loss_reg': reg_loss_meter.avg,
+                        'input_var': input_var_meter.avg,
+                        'input_var_min': input_var_min_meter.avg
+                    })
 
                     if optim_stats is not None:
                         logger.info(
