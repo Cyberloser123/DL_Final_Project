@@ -25,7 +25,7 @@ parser.add_argument(
     help='which devices to use on local machine')
 
 
-def process_main(rank, fname, world_size, devices, wandb_logger):
+def process_main(rank, fname, world_size, devices):
     import os
     os.environ['CUDA_VISIBLE_DEVICES'] = str(devices[rank].split(':')[-1])
     
@@ -50,10 +50,13 @@ def process_main(rank, fname, world_size, devices, wandb_logger):
 
     # Log config
     if rank == 0:
+        wandb_logger = WandbLogger(params, use_wandb=True, use_print=False)
         pprint.PrettyPrinter(indent=4).pprint(params)
         dump = os.path.join(params['logging']['folder'], 'params-pretrain.yaml')
         with open(dump, 'w') as f:
             yaml.dump(params, f)
+    else:
+        wandb_logger = WandbLogger(params, use_wandb=False, use_print=False)
 
     # Init distributed (access to comm between GPUS on same machine)
     world_size, rank = init_distributed(rank_and_world_size=(rank, world_size))
@@ -66,10 +69,9 @@ def process_main(rank, fname, world_size, devices, wandb_logger):
 if __name__ == '__main__':
     args = parser.parse_args()
     num_gpus = len(args.devices)
-    wandb_logger = WandbLogger(args)
     mp.set_start_method('spawn')
     for rank in range(num_gpus):
         mp.Process(
             target=process_main,
-            args=(rank, args.fname, num_gpus, args.devices, wandb_logger)
+            args=(rank, args.fname, num_gpus, args.devices)
         ).start()

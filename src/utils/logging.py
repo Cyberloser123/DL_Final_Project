@@ -122,10 +122,10 @@ def adamw_logger(optimizer):
 import wandb
 
 class WandbLogger:
-    def __init__(self, args, wandb_run=None):
+    def __init__(self, args, use_wandb=True, use_print=False, wandb_run=None):
         self.args = args
-        self.use_wandb = False
-        self.use_print = True
+        self.use_wandb = use_wandb
+        self.use_print = use_print
         self.wandb_project = "vjepa-reg" #args.wandb_project
         if self.use_wandb:
             self.wandb_run = wandb_run
