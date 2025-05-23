@@ -170,7 +170,7 @@ class VisionTransformer(nn.Module):
         return {}
     
     def prepare_tokens_with_masks(self, x, masks=None): # include register tokens & patch embed
-        print(f"x.shape: {x.shape}")
+        # print(f"x.shape: {x.shape}")
         B, nc, n_frames, w, h = x.shape
 
         pos_embed = self.pos_embed

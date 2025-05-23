@@ -446,8 +446,19 @@ def main(args, resume_preempt=False):
                     Returns list of tensors of shape [B, N, D], one for each
                     mask-pred.
                     """
+                    # print("===forward_context===")
+                    # print("c:", c.shape)
+                    # print("h:", h[0].shape, h[1].shape)
+                    # print("masks_enc:", masks_enc[0].shape, masks_enc[1].shape)
+                    # print("masks_enc:", len(masks_enc), masks_enc[0])
                     z = encoder(c, masks_enc)
+                    # print("z:", z[0].shape, z[1].shape)
+                    # z[0] = torch.cat(z[:, 0], z[:, 0])
+                    z[0] = z[0][:,5:]
+                    z[1] = z[1][:,5:]
+                    # print("z_modify:", z[0].shape, z[1].shape)
                     z = predictor(z, h, masks_enc, masks_pred)
+                    # print("z_out:", z[0].shape, z[1].shape)
                     return z
 
                 def loss_fn(z, h):

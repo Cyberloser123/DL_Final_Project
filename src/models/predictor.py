@@ -196,8 +196,11 @@ class VisionTransformerPredictor(nn.Module):
 
         # Add positional embedding to ctxt tokens
         if self.predictor_pos_embed is not None:
+            
             ctxt_pos_embed = self.predictor_pos_embed.repeat(B, 1, 1)
-            x += apply_masks(ctxt_pos_embed, masks_ctxt)
+            tmp = apply_masks(ctxt_pos_embed, masks_ctxt)
+            # print("predictor_pos_embed: ", x.shape, tmp.shape)
+            x += tmp
 
         # Map target tokens to predictor dimensions & add noise (fwd diffusion)
         if self.mask_tokens is None:
