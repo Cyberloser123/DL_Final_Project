@@ -39,6 +39,7 @@ class VisionTransformer(nn.Module):
         init_std=0.02,
         out_layers=None,
         uniform_power=False,
+        num_register_tokens=0,
         **kwargs
     ):
         super().__init__()
@@ -52,6 +53,7 @@ class VisionTransformer(nn.Module):
         self.num_frames = num_frames
         self.tubelet_size = tubelet_size
         self.is_video = num_frames > 1
+        self.num_register_tokens = num_register_tokens
 
         grid_size = self.input_size // self.patch_size
         grid_depth = self.num_frames // self.tubelet_size
@@ -84,6 +86,15 @@ class VisionTransformer(nn.Module):
         self.pos_embed = nn.Parameter(
             torch.zeros(1, self.num_patches, embed_dim),
             requires_grad=False)
+        
+        assert num_register_tokens >= 0
+        self.register_tokens = (
+            nn.Parameter(torch.zeros(1, num_register_tokens, embed_dim)) if num_register_tokens else None
+        )
+
+        self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
+
+
 
         # Attention Blocks
         self.blocks = nn.ModuleList([
@@ -141,6 +152,8 @@ class VisionTransformer(nn.Module):
             trunc_normal_(m.weight, std=self.init_std)
             if m.bias is not None:
                 nn.init.constant_(m.bias, 0)
+        elif isinstance(m, nn.Parameter):
+            trunc_normal_(m.weight, std=self.init_std)
 
     def _rescale_blocks(self):
         def rescale(param, layer_id):
@@ -155,6 +168,41 @@ class VisionTransformer(nn.Module):
 
     def no_weight_decay(self):
         return {}
+    
+    def prepare_tokens_with_masks(self, x, masks=None): # include register tokens & patch embed
+        print(f"x.shape: {x.shape}")
+        B, nc, n_frames, w, h = x.shape
+
+        pos_embed = self.pos_embed
+        if pos_embed is not None:
+            pos_embed = self.interpolate_pos_encoding(x, pos_embed)
+        
+        x = self.patch_embed(x)
+        # if masks is not None:
+            # x = torch.where(masks.unsqueeze(-1), self.mask_token.to(x.dtype).unsqueeze(0), x)
+
+
+        x = x + pos_embed
+
+
+        # Mask away unwanted tokens (if masks provided)
+        if masks is not None:
+            x = apply_masks(x, masks)
+            masks = torch.cat(masks, dim=0)
+        x = torch.cat((self.cls_token.expand(x.shape[0], -1, -1), x), dim=1)
+        
+
+        if self.register_tokens is not None:
+            x = torch.cat(
+                (
+                    x[:, :1],
+                    self.register_tokens.expand(x.shape[0], -1, -1),
+                    x[:, 1:],
+                ),
+                dim=1,
+            )
+
+        return x
 
     def forward(self, x, masks=None):
         """
@@ -166,18 +214,19 @@ class VisionTransformer(nn.Module):
             masks = [masks]
 
         # Tokenize input
-        pos_embed = self.pos_embed
-        if pos_embed is not None:
-            pos_embed = self.interpolate_pos_encoding(x, pos_embed)
-        x = self.patch_embed(x)
-        if pos_embed is not None:
-            x += pos_embed
-        B, N, D = x.shape
+        # B, nc, n_frames, w, h = x.shape #x.shape: torch.Size([24, 3, 16, 224, 224])
+        x = self.prepare_tokens_with_masks(x, masks)
 
-        # Mask away unwanted tokens (if masks provided)
-        if masks is not None:
-            x = apply_masks(x, masks)
-            masks = torch.cat(masks, dim=0)
+
+        # pos_embed = self.pos_embed
+        # if pos_embed is not None:
+        #     pos_embed = self.interpolate_pos_encoding(x, pos_embed)
+        # # x = self.patch_embed(x)
+        # if pos_embed is not None:
+        #     x += pos_embed
+        # B, N, D = x.shape # x.shape: torch.Size([24, 1568, 768]) 1568 = 14 * 14 * 8, 8 = 16 / 2
+        # print(f"x.shape: {x.shape}")
+
 
         # Fwd prop
         outs = []
@@ -253,44 +302,50 @@ def vit_tiny(patch_size=16, **kwargs):
     return model
 
 
-def vit_small(patch_size=16, **kwargs):
+def vit_small(patch_size=16, num_register_tokens=4, **kwargs):
     model = VisionTransformer(
         patch_size=patch_size, embed_dim=384, depth=12, num_heads=6, mlp_ratio=4,
+        num_register_tokens=num_register_tokens,
         qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     return model
 
 
-def vit_base(patch_size=16, **kwargs):
+def vit_base(patch_size=16, num_register_tokens=4, **kwargs):
     model = VisionTransformer(
         patch_size=patch_size, embed_dim=768, depth=12, num_heads=12, mlp_ratio=4,
+        num_register_tokens=num_register_tokens,
         qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     return model
 
 
-def vit_large(patch_size=16, **kwargs):
+def vit_large(patch_size=16, num_register_tokens=4, **kwargs):
     model = VisionTransformer(
         patch_size=patch_size, embed_dim=1024, depth=24, num_heads=16, mlp_ratio=4,
+        num_register_tokens=num_register_tokens,
         qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     return model
 
 
-def vit_huge(patch_size=16, **kwargs):
+def vit_huge(patch_size=16, num_register_tokens=4, **kwargs):
     model = VisionTransformer(
         patch_size=patch_size, embed_dim=1280, depth=32, num_heads=16, mlp_ratio=4,
+        num_register_tokens=num_register_tokens,
         qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     return model
 
 
-def vit_giant(patch_size=16, **kwargs):
+def vit_giant(patch_size=16, num_register_tokens=4, **kwargs):
     model = VisionTransformer(
         patch_size=patch_size, embed_dim=1408, depth=40, num_heads=16, mlp_ratio=48/11,
+        num_register_tokens=num_register_tokens,
         qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
     return model
 
 
-def vit_gigantic(patch_size=14, **kwargs):
+def vit_gigantic(patch_size=14, num_register_tokens=4, **kwargs):
     model = VisionTransformer(
         patch_size=patch_size, embed_dim=1664, depth=48, num_heads=16, mpl_ratio=64/13,
+        num_register_tokens=num_register_tokens,
         qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs
     )
     return model

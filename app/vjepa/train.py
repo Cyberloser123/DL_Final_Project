@@ -30,6 +30,7 @@ from src.datasets.data_manager import init_data
 from src.masks.random_tube import MaskCollator as TubeMaskCollator
 from src.masks.multiblock3d import MaskCollator as MB3DMaskCollator
 from src.masks.utils import apply_masks
+from src.utils.logging import WandbLogger
 from src.utils.distributed import init_distributed, AllReduce
 from src.utils.logging import (
     CSVLogger,
@@ -61,6 +62,8 @@ torch.backends.cudnn.benchmark = True
 
 
 logger = get_logger(__name__)
+
+
 
 
 def main(args, resume_preempt=False):
@@ -155,6 +158,16 @@ def main(args, resume_preempt=False):
     cfgs_logging = args.get('logging')
     folder = cfgs_logging.get('folder')
     tag = cfgs_logging.get('write_tag')
+
+    # -- REGISTER TOKENS
+    cfgs_register_tokens = args.get('register_tokens')
+    num_register_tokens = cfgs_register_tokens.get('num_register_tokens')
+
+    # -- WANDB
+
+
+
+    wandb_logger = WandbLogger(args)
 
     # ----------------------------------------------------------------------- #
     # ----------------------------------------------------------------------- #
@@ -572,6 +585,13 @@ def main(args, resume_preempt=False):
                                grad_stats_pred.min,
                                grad_stats_pred.max,
                                grad_stats_pred.global_norm))
+                    wandb_logger.log({
+                        'loss': loss_meter.avg,
+                        'loss_jepa': jepa_loss_meter.avg,
+                        'loss_reg': reg_loss_meter.avg,
+                        'input_var': input_var_meter.avg,
+                        'input_var_min': input_var_min_meter.avg,
+                    })
             log_stats()
             assert not np.isnan(loss), 'loss is nan'
 
