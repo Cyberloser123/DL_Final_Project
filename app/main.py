@@ -8,7 +8,7 @@
 import argparse
 
 import multiprocessing as mp
-
+from src.utils.logging import WandbLogger
 import pprint
 import yaml
 
@@ -25,7 +25,7 @@ parser.add_argument(
     help='which devices to use on local machine')
 
 
-def process_main(rank, fname, world_size, devices):
+def process_main(rank, fname, world_size, devices, wandb_logger):
     import os
     os.environ['CUDA_VISIBLE_DEVICES'] = str(devices[rank].split(':')[-1])
     
@@ -60,15 +60,16 @@ def process_main(rank, fname, world_size, devices):
     logger.info(f'Running... (rank: {rank}/{world_size})')
 
     # Launch the app with loaded config
-    app_main(params['app'], args=params)
+    app_main(params['app'], wandb_logger, args=params)
 
 
 if __name__ == '__main__':
     args = parser.parse_args()
     num_gpus = len(args.devices)
+    wandb_logger = WandbLogger(args)
     mp.set_start_method('spawn')
     for rank in range(num_gpus):
         mp.Process(
             target=process_main,
-            args=(rank, args.fname, num_gpus, args.devices)
+            args=(rank, args.fname, num_gpus, args.devices, wandb_logger)
         ).start()

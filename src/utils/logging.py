@@ -124,7 +124,7 @@ import wandb
 class WandbLogger:
     def __init__(self, args, wandb_run=None):
         self.args = args
-        self.use_wandb = True
+        self.use_wandb = False
         self.use_print = True
         self.wandb_project = "vjepa-reg" #args.wandb_project
         if self.use_wandb:

@@ -30,7 +30,7 @@ from src.datasets.data_manager import init_data
 from src.masks.random_tube import MaskCollator as TubeMaskCollator
 from src.masks.multiblock3d import MaskCollator as MB3DMaskCollator
 from src.masks.utils import apply_masks
-from src.utils.logging import WandbLogger
+
 from src.utils.distributed import init_distributed, AllReduce
 from src.utils.logging import (
     CSVLogger,
@@ -66,7 +66,7 @@ logger = get_logger(__name__)
 
 
 
-def main(args, resume_preempt=False):
+def main(wandb_logger, args, resume_preempt=False):
     # ----------------------------------------------------------------------- #
     #  PASSED IN PARAMS FROM CONFIG FILE
     # ----------------------------------------------------------------------- #
@@ -167,7 +167,7 @@ def main(args, resume_preempt=False):
 
 
 
-    wandb_logger = WandbLogger(args)
+    
 
     # ----------------------------------------------------------------------- #
     # ----------------------------------------------------------------------- #
