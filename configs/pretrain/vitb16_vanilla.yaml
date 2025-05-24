@@ -3,16 +3,20 @@ nodes: 16
 tasks_per_node: 8
 wandb_project: vjepa-reg
 
-register_tokens:
-  num_register_tokens: 4
+model_structure:
+  num_register_tokens: 0
+  dyt_encoder: false
+  dyt_predictor: false
+
+
 data:
   dataset_type: VideoDataset
   datasets:
-    - train.csv
+    - train-computer187.csv
   decode_one_clip: true
-  batch_size: 4
+  batch_size: 16
   num_clips: 1
-  num_frames: 4
+  num_frames: 16
   tubelet_size: 2
   sampling_rate: 4
   crop_size: 224

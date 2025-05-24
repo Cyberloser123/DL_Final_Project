@@ -88,11 +88,12 @@ class VisionTransformer(nn.Module):
             requires_grad=False)
         
         assert num_register_tokens >= 0
+        print(f"===> num_register_tokens: {num_register_tokens}")
         self.register_tokens = (
             nn.Parameter(torch.zeros(1, num_register_tokens, embed_dim)) if num_register_tokens else None
         )
 
-        self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
+        self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim)) if num_register_tokens > 0 else None
 
 
 
@@ -189,10 +190,11 @@ class VisionTransformer(nn.Module):
         if masks is not None:
             x = apply_masks(x, masks)
             masks = torch.cat(masks, dim=0)
-        x = torch.cat((self.cls_token.expand(x.shape[0], -1, -1), x), dim=1)
+        
         
 
         if self.register_tokens is not None:
+            x = torch.cat((self.cls_token.expand(x.shape[0], -1, -1), x), dim=1)
             x = torch.cat(
                 (
                     x[:, :1],

@@ -4,9 +4,9 @@ tasks_per_node: 8
 wandb_project: vjepa-reg
 
 model_structure:
-  num_register_tokens: 4
-  dyt_encoder: false
-  dyt_predictor: false
+  num_register_tokens: 0
+  dyt_encoder: true
+  dyt_predictor: true
 
 
 data:

@@ -5,8 +5,8 @@ wandb_project: vjepa-reg
 
 model_structure:
   num_register_tokens: 4
-  dyt_encoder: false
-  dyt_predictor: false
+  dyt_encoder: true
+  dyt_predictor: true
 
 
 data:

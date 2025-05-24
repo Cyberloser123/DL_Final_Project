@@ -98,6 +98,9 @@ def init_video_model(
     num_mask_tokens=2,
     zero_init_mask_tokens=True,
     use_sdpa=False,
+    num_register_tokens=0,
+    dyt_encoder=False,
+    dyt_predictor=False,
 ):
     encoder = video_vit.__dict__[model_name](
         img_size=crop_size,
@@ -106,8 +109,13 @@ def init_video_model(
         tubelet_size=tubelet_size,
         uniform_power=uniform_power,
         use_sdpa=use_sdpa,
+        num_register_tokens=num_register_tokens,
     )
-    encoder = convert_ln_to_dyt(encoder)
+    if dyt_encoder:
+        print("===> Converting encoder to dyt")
+        encoder = convert_ln_to_dyt(encoder)
+    else:
+        print("===> Not converting encoder to dyt")
     encoder = MultiMaskWrapper(encoder)
     predictor = vit_pred.__dict__['vit_predictor'](
         img_size=crop_size,
@@ -124,7 +132,11 @@ def init_video_model(
         zero_init_mask_tokens=zero_init_mask_tokens,
         use_sdpa=use_sdpa,
     )
-    predictor = convert_ln_to_dyt_pred(predictor)
+    if dyt_predictor:
+        print("===> Converting predictor to dyt")
+        predictor = convert_ln_to_dyt_pred(predictor)
+    else:
+        print("===> Not converting predictor to dyt")
     predictor = PredictorMultiMaskWrapper(predictor)
 
     def init_weights(m):

@@ -1,12 +1,20 @@
 app: vjepa
 nodes: 16
 tasks_per_node: 8
+wandb_project: vjepa-reg
+
+model_structure:
+  num_register_tokens: 0
+  dyt_encoder: true
+  dyt_predictor: false
+
+
 data:
   dataset_type: VideoDataset
   datasets:
-    - train.csv
+    - train-computer187.csv
   decode_one_clip: true
-  batch_size: 24
+  batch_size: 16
   num_clips: 1
   num_frames: 16
   tubelet_size: 2
@@ -28,7 +36,7 @@ data_aug:
   - 1.0
   reprob: 0.0
 logging:
-  folder: exp-vitb16-1/
+  folder: exp-vitb16-reg-1/
   write_tag: jepa
 loss:
   loss_exp: 1.0

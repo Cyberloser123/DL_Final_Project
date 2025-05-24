@@ -162,8 +162,10 @@ def main(wandb_logger, args, resume_preempt=False):
     wandb_logger = WandbLogger(args)
 
     # -- REGISTER TOKENS
-    cfgs_register_tokens = args.get('register_tokens')
+    cfgs_register_tokens = args.get('model_structure')
     num_register_tokens = cfgs_register_tokens.get('num_register_tokens')
+    dyt_encoder = cfgs_register_tokens.get('dyt_encoder')
+    dyt_predictor = cfgs_register_tokens.get('dyt_predictor')
 
     # -- WANDB
 
@@ -233,6 +235,9 @@ def main(wandb_logger, args, resume_preempt=False):
         pred_depth=pred_depth,
         pred_embed_dim=pred_embed_dim,
         use_sdpa=use_sdpa,
+        num_register_tokens=num_register_tokens,
+        dyt_encoder=dyt_encoder,
+        dyt_predictor=dyt_predictor
     )
     target_encoder = copy.deepcopy(encoder)
 
@@ -456,8 +461,9 @@ def main(wandb_logger, args, resume_preempt=False):
                     z = encoder(c, masks_enc)
                     # print("z:", z[0].shape, z[1].shape)
                     # z[0] = torch.cat(z[:, 0], z[:, 0])
-                    z[0] = z[0][:,5:]
-                    z[1] = z[1][:,5:]
+                    if num_register_tokens > 0:
+                        z[0] = z[0][:,num_register_tokens+1:]
+                        z[1] = z[1][:,num_register_tokens+1:]
                     # print("z_modify:", z[0].shape, z[1].shape)
                     z = predictor(z, h, masks_enc, masks_pred)
                     # print("z_out:", z[0].shape, z[1].shape)
@@ -476,7 +482,7 @@ def main(wandb_logger, args, resume_preempt=False):
 
                 # Step 1. Forward
                 loss_jepa, loss_reg = 0., 0.
-                with torch.cuda.amp.autocast(dtype=dtype, enabled=mixed_precision):
+                with torch.amp.autocast('cuda', dtype=dtype, enabled=mixed_precision):
                     h = forward_target(clips)
                     z = forward_context(clips, h)
                     loss_jepa = loss_fn(z, h)  # jepa prediction loss
