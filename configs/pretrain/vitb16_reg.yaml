@@ -73,6 +73,7 @@ meta:
   eval_freq: 100
   use_sdpa: true
   dtype: bfloat16
+  save_every_freq: 100
 model:
   model_name: vit_base
   pred_depth: 12
