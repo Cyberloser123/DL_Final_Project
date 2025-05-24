@@ -35,3 +35,11 @@ def convert_ln_to_dyt(module):
     del module
     return module_output
 
+def convert_ln_to_dyt_pred(module):
+    module_output = module
+    if isinstance(module, nn.LayerNorm):
+        module_output = DynamicTanh(module.normalized_shape, module.elementwise_affine)
+    for name, child in module.named_children():
+        module_output.add_module(name, convert_ln_to_dyt(child))
+    del module
+    return module_output
