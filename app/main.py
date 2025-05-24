@@ -8,7 +8,7 @@
 import argparse
 
 import multiprocessing as mp
-
+from src.utils.logging import WandbLogger
 import pprint
 import yaml
 
@@ -50,17 +50,20 @@ def process_main(rank, fname, world_size, devices):
 
     # Log config
     if rank == 0:
+        wandb_logger = WandbLogger(params, use_wandb=True, use_print=False)
         pprint.PrettyPrinter(indent=4).pprint(params)
         dump = os.path.join(params['logging']['folder'], 'params-pretrain.yaml')
         with open(dump, 'w') as f:
             yaml.dump(params, f)
+    else:
+        wandb_logger = WandbLogger(params, use_wandb=False, use_print=False)
 
     # Init distributed (access to comm between GPUS on same machine)
     world_size, rank = init_distributed(rank_and_world_size=(rank, world_size))
     logger.info(f'Running... (rank: {rank}/{world_size})')
 
     # Launch the app with loaded config
-    app_main(params['app'], args=params)
+    app_main(params['app'], wandb_logger, args=params)
 
 
 if __name__ == '__main__':

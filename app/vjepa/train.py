@@ -31,6 +31,7 @@ from src.datasets.data_manager import init_data
 from src.masks.random_tube import MaskCollator as TubeMaskCollator
 from src.masks.multiblock3d import MaskCollator as MB3DMaskCollator
 from src.masks.utils import apply_masks
+
 from src.utils.distributed import init_distributed, AllReduce
 from src.utils.logging import (
     CSVLogger,
@@ -64,7 +65,9 @@ torch.backends.cudnn.benchmark = True
 logger = get_logger(__name__)
 
 
-def main(args, resume_preempt=False):
+
+
+def main(wandb_logger, args, resume_preempt=False):
     # ----------------------------------------------------------------------- #
     #  PASSED IN PARAMS FROM CONFIG FILE
     # ----------------------------------------------------------------------- #
@@ -157,6 +160,16 @@ def main(args, resume_preempt=False):
     folder = cfgs_logging.get('folder')
     tag = cfgs_logging.get('write_tag')
     wandb_logger = WandbLogger(args)
+
+    # -- REGISTER TOKENS
+    cfgs_register_tokens = args.get('register_tokens')
+    num_register_tokens = cfgs_register_tokens.get('num_register_tokens')
+
+    # -- WANDB
+
+
+
+    
 
     # ----------------------------------------------------------------------- #
     # ----------------------------------------------------------------------- #
@@ -435,8 +448,19 @@ def main(args, resume_preempt=False):
                     Returns list of tensors of shape [B, N, D], one for each
                     mask-pred.
                     """
+                    # print("===forward_context===")
+                    # print("c:", c.shape)
+                    # print("h:", h[0].shape, h[1].shape)
+                    # print("masks_enc:", masks_enc[0].shape, masks_enc[1].shape)
+                    # print("masks_enc:", len(masks_enc), masks_enc[0])
                     z = encoder(c, masks_enc)
+                    # print("z:", z[0].shape, z[1].shape)
+                    # z[0] = torch.cat(z[:, 0], z[:, 0])
+                    z[0] = z[0][:,5:]
+                    z[1] = z[1][:,5:]
+                    # print("z_modify:", z[0].shape, z[1].shape)
                     z = predictor(z, h, masks_enc, masks_pred)
+                    # print("z_out:", z[0].shape, z[1].shape)
                     return z
 
                 def loss_fn(z, h):
@@ -582,6 +606,13 @@ def main(args, resume_preempt=False):
                                grad_stats_pred.min,
                                grad_stats_pred.max,
                                grad_stats_pred.global_norm))
+                    wandb_logger.log({
+                        'loss': loss_meter.avg,
+                        'loss_jepa': jepa_loss_meter.avg,
+                        'loss_reg': reg_loss_meter.avg,
+                        'input_var': input_var_meter.avg,
+                        'input_var_min': input_var_min_meter.avg,
+                    })
             log_stats()
             assert not np.isnan(loss), 'loss is nan'
 

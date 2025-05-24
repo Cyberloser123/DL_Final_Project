@@ -13,9 +13,10 @@ logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 logger = logging.getLogger()
 
 
-def main(app, args, resume_preempt=False):
+def main(app, wandb_logger, args, resume_preempt=False):
 
     logger.info(f'Running pre-training of app: {app}')
     return importlib.import_module(f'app.{app}.train').main(
         args=args,
+        wandb_logger=wandb_logger,
         resume_preempt=resume_preempt)
