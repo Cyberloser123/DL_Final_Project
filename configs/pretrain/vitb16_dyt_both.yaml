@@ -36,7 +36,7 @@ data_aug:
   - 1.0
   reprob: 0.0
 logging:
-  folder: exp-vitb16-reg-1/
+  folder: exp-vitb16-dyt-both/
   write_tag: jepa
 loss:
   loss_exp: 1.0
