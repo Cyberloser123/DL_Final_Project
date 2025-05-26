@@ -14,7 +14,7 @@ data:
   datasets:
     - train-computer187.csv
   decode_one_clip: true
-  batch_size: 12
+  batch_size: 16
   num_clips: 1
   num_frames: 16
   tubelet_size: 2
