@@ -19,7 +19,7 @@ class DynamicTanh(nn.Module):
         return x
 
     def extra_repr(self):
-        return f"normalized_shape={self.normalized_shape}, alpha_init_value={self.alpha_init_value}, channels_last={self.channels_last}"
+        return f"normalized_shape={self.normalized_shape}, alpha_init_value={self.alpha_init_value}"
 
 
 def convert_ln_to_dyt(module):
