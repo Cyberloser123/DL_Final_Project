@@ -6,8 +6,8 @@ resume_checkpoint: false
 
 model_structure:
   num_register_tokens: 0
-  dyt_encoder: false
-  dyt_predictor: false
+  dyt_encoder: true
+  dyt_predictor: true
 
 data:
   dataset_train: train-computer187.csv
@@ -22,7 +22,7 @@ optimization:
   attend_across_segments: true
   num_epochs: 20
   resolution: 224
-  batch_size: 4
+  batch_size: 32
   weight_decay: 0.01
   lr: 0.001
   start_lr: 0.001

@@ -5,7 +5,7 @@ eval_name: video_classification_frozen
 resume_checkpoint: false
 
 model_structure:
-  num_register_tokens: 0
+  num_register_tokens: 4
   dyt_encoder: false
   dyt_predictor: false
 
@@ -22,7 +22,7 @@ optimization:
   attend_across_segments: true
   num_epochs: 20
   resolution: 224
-  batch_size: 4
+  batch_size: 32
   weight_decay: 0.01
   lr: 0.001
   start_lr: 0.001
