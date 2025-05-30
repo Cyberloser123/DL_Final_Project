@@ -10,8 +10,8 @@ model_structure:
   dyt_predictor: false
 
 data:
-  dataset_train: train-computer187.csv
-  dataset_val: validation-computer187.csv
+  dataset_train: train.csv
+  dataset_val: validation-computer-aws.csv
   dataset_type: VideoDataset
   num_classes: 174
   frames_per_clip: 16
@@ -22,7 +22,7 @@ optimization:
   attend_across_segments: true
   num_epochs: 20
   resolution: 224
-  batch_size: 32
+  batch_size: 4
   weight_decay: 0.01
   lr: 0.001
   start_lr: 0.001
@@ -40,6 +40,6 @@ pretrain:
   tight_silu: false
   use_sdpa: true
   patch_size: 16
-  folder: exp-vitb16-vanilla/
+  folder: exp-vitb16-reg-1-x4-epoch75/
   checkpoint: jepa-latest.pth.tar  # name of pretrained model file inside folder
   write_tag: jepa

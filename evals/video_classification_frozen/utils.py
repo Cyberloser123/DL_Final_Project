@@ -94,7 +94,9 @@ class ClipAggregation(nn.Module):
         tubelet_size=2,
         max_frames=10000,
         use_pos_embed=False,
-        attend_across_segments=False
+        attend_across_segments=False,
+        num_register_tokens=0
+        
     ):
         super().__init__()
         self.model = model
@@ -102,6 +104,7 @@ class ClipAggregation(nn.Module):
         self.embed_dim = embed_dim = model.embed_dim
         self.num_heads = model.num_heads
         self.attend_across_segments = attend_across_segments
+        self.num_register_tokens = num_register_tokens
         # 1D-temporal pos-embedding
         self.pos_embed = None
         if use_pos_embed:
@@ -122,6 +125,11 @@ class ClipAggregation(nn.Module):
         x = [torch.cat(xi, dim=0) for xi in x]
         x = torch.cat(x, dim=0)
         outputs = self.model(x)
+        num_register_tokens = self.num_register_tokens
+        # print('line 129 at utils.py', outputs.shape)
+        if num_register_tokens > 0:
+                        outputs = outputs[:,num_register_tokens+1:]
+                        # outputs[1] = outputs[1][num_register_tokens+1:]
         _, N, D = outputs.size()
 
         T = T // self.tubelet_size  # Num temporal tokens

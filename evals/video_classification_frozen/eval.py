@@ -183,7 +183,8 @@ def main(args_eval, resume_preempt=False):
         encoder = ClipAggregation(
             encoder,
             tubelet_size=tubelet_size,
-            attend_across_segments=attend_across_segments
+            attend_across_segments=attend_across_segments,
+            num_register_tokens=num_register_tokens
         ).to(device)
     encoder.eval()
     for p in encoder.parameters():
@@ -285,7 +286,8 @@ def main(args_eval, resume_preempt=False):
             data_loader=train_loader,
             use_bfloat16=use_bfloat16,
             wandb_logger=wandb_logger,
-            epoch=epoch)
+            epoch=epoch,
+            num_register_tokens=num_register_tokens)
 
         val_acc = run_one_epoch(
             device=device,
@@ -302,7 +304,8 @@ def main(args_eval, resume_preempt=False):
             data_loader=val_loader,
             use_bfloat16=use_bfloat16,
             wandb_logger=wandb_logger,
-            epoch=epoch)
+            epoch=epoch,
+            num_register_tokens=num_register_tokens)
 
         logger.info('[%5d] train: %.3f%% test: %.3f%%' % (epoch + 1, train_acc, val_acc))
         if rank == 0:
@@ -330,6 +333,7 @@ def run_one_epoch(
     attend_across_segments,
     wandb_logger,
     epoch,
+    num_register_tokens
 ):
 
     classifier.train(mode=training)
@@ -355,6 +359,7 @@ def run_one_epoch(
             # Forward and prediction
             with torch.no_grad():
                 outputs = encoder(clips, clip_indices)
+                
                 if not training:
                     if attend_across_segments:
                         outputs = [classifier(o) for o in outputs]
