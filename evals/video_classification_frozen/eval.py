@@ -25,11 +25,12 @@ import numpy as np
 import torch
 import torch.multiprocessing as mp
 import torch.nn.functional as F
-
+from src.utils.wandb import WandbLogger
 from torch.nn.parallel import DistributedDataParallel
-
+from src.models.dynamic_tanh import convert_ln_to_dyt
 import src.models.vision_transformer as vit
 from src.models.attentive_pooler import AttentiveClassifier
+
 from src.datasets.data_manager import (
     init_data,
 )
@@ -116,6 +117,13 @@ def main(args_eval, resume_preempt=False):
     resume_checkpoint = args_eval.get('resume_checkpoint', False) or resume_preempt
     eval_tag = args_eval.get('tag', None)
 
+    # -- REGISTER TOKENS
+    cfgs_register_tokens = args_eval.get('model_structure')
+    num_register_tokens = cfgs_register_tokens.get('num_register_tokens')
+    dyt_encoder = cfgs_register_tokens.get('dyt_encoder')
+    dyt_predictor = cfgs_register_tokens.get('dyt_predictor')
+    wandb_logger = WandbLogger(args_eval)
+
     # ----------------------------------------------------------------------- #
 
     try:
@@ -163,7 +171,10 @@ def main(args_eval, resume_preempt=False):
         checkpoint_key=checkpoint_key,
         use_SiLU=use_SiLU,
         tight_SiLU=tight_SiLU,
-        use_sdpa=use_sdpa)
+        use_sdpa=use_sdpa,
+        num_register_tokens=num_register_tokens,
+        dyt_encoder=dyt_encoder,
+        dyt_predictor=dyt_predictor)
     if pretrain_frames_per_clip == 1:
         # Process each frame independently and aggregate
         encoder = FrameAggregation(encoder).to(device)
@@ -272,7 +283,9 @@ def main(args_eval, resume_preempt=False):
             scheduler=scheduler,
             wd_scheduler=wd_scheduler,
             data_loader=train_loader,
-            use_bfloat16=use_bfloat16)
+            use_bfloat16=use_bfloat16,
+            wandb_logger=wandb_logger,
+            epoch=epoch)
 
         val_acc = run_one_epoch(
             device=device,
@@ -287,11 +300,17 @@ def main(args_eval, resume_preempt=False):
             scheduler=scheduler,
             wd_scheduler=wd_scheduler,
             data_loader=val_loader,
-            use_bfloat16=use_bfloat16)
+            use_bfloat16=use_bfloat16,
+            wandb_logger=wandb_logger,
+            epoch=epoch)
 
         logger.info('[%5d] train: %.3f%% test: %.3f%%' % (epoch + 1, train_acc, val_acc))
         if rank == 0:
             csv_logger.log(epoch + 1, train_acc, val_acc)
+        wandb_logger.log({
+            'train_acc': train_acc,
+            'val_acc': val_acc
+        })
         save_checkpoint(epoch + 1)
 
 
@@ -309,6 +328,8 @@ def run_one_epoch(
     num_spatial_views,
     num_temporal_views,
     attend_across_segments,
+    wandb_logger,
+    epoch,
 ):
 
     classifier.train(mode=training)
@@ -320,7 +341,7 @@ def run_one_epoch(
             scheduler.step()
             wd_scheduler.step()
 
-        with torch.cuda.amp.autocast(dtype=torch.float16, enabled=use_bfloat16):
+        with torch.amp.autocast('cuda', dtype=torch.float16, enabled=use_bfloat16):
 
             # Load data and put on GPU
             clips = [
@@ -376,6 +397,12 @@ def run_one_epoch(
             logger.info('[%5d] %.3f%% (loss: %.3f) [mem: %.2e]'
                         % (itr, top1_meter.avg, loss,
                            torch.cuda.max_memory_allocated() / 1024.**2))
+            wandb_logger.log({
+                'epoch': epoch + 1,
+                'loss': loss,
+                'top1_acc': top1_meter.avg,
+                'memory': torch.cuda.max_memory_allocated() / 1024.**2
+            })
 
     return top1_meter.avg
 
@@ -501,7 +528,10 @@ def init_model(
     use_SiLU=False,
     tight_SiLU=True,
     uniform_power=False,
-    checkpoint_key='target_encoder'
+    checkpoint_key='target_encoder',
+    num_register_tokens=0,
+    dyt_encoder=False,
+    dyt_predictor=False,
 ):
     encoder = vit.__dict__[model_name](
         img_size=crop_size,
@@ -512,8 +542,13 @@ def init_model(
         use_sdpa=use_sdpa,
         use_SiLU=use_SiLU,
         tight_SiLU=tight_SiLU,
+        num_register_tokens=num_register_tokens,
     )
-
+    if dyt_encoder:
+        print("===> Converting encoder to dyt")
+        encoder = convert_ln_to_dyt(encoder)
+    else:
+        print("===> Not converting encoder to dyt")
     encoder.to(device)
     encoder = load_pretrained(encoder=encoder, pretrained=pretrained, checkpoint_key=checkpoint_key)
     return encoder
@@ -557,5 +592,5 @@ def init_opt(
         ref_wd=wd,
         final_wd=final_wd,
         T_max=int(num_epochs*iterations_per_epoch))
-    scaler = torch.cuda.amp.GradScaler() if use_bfloat16 else None
+    scaler = torch.amp.GradScaler('cuda') if use_bfloat16 else None
     return optimizer, scaler, scheduler, wd_scheduler

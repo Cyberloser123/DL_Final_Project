@@ -5,7 +5,8 @@ class WandbLogger:
         self.args = args
         self.use_wandb = True
         self.use_print = True
-        self.wandb_project = "vjepa-reg" #args.wandb_project
+        self.is_train = True if 'eval_name' not in args else False
+        self.wandb_project = "redy-vjepa" if self.is_train else "redy-vjepa-eval" #args.wandb_project
         if self.use_wandb:
             self.wandb_run = wandb_run
             if self.wandb_run is None:
