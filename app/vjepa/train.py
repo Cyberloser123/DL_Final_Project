@@ -64,7 +64,51 @@ torch.backends.cudnn.benchmark = True
 
 logger = get_logger(__name__)
 
+import torch.nn as nn
+import matplotlib.pyplot as plt
+import seaborn as sns
+import os
 
+def get_hook(name, norm_activations):
+    def hook(module, input, output):
+        norm_activations[name] = {
+            'input': input[0].detach().cpu(),
+            'output': output.detach().cpu()
+        }
+    return hook
+
+def register_norm_hooks(model, norm_activations):
+    for name, module in model.named_modules():
+        if isinstance(module, (nn.LayerNorm, nn.BatchNorm1d, nn.BatchNorm2d,
+                               nn.BatchNorm3d, nn.GroupNorm, nn.InstanceNorm1d,
+                               nn.InstanceNorm2d, nn.InstanceNorm3d)):
+            module.register_forward_hook(get_hook(name, norm_activations))
+
+def visualize_norm_activations(norm_activations, epoch, save_dir="./norm_vis", sub="encoder"):
+    save_dir = os.path.join(save_dir, str(epoch))
+    os.makedirs(save_dir, exist_ok=True)
+    save_layers = ["blocks.0", "blocks.2", "blocks.5", "blocks.8", "blocks.11"]
+    for name, act in norm_activations.items():
+        if not any(l in name for l in save_layers):
+            continue 
+
+        plt.figure(figsize=(6, 6))
+
+        x = act["input"].flatten().numpy()
+        y = act["output"].flatten().numpy()
+
+        # Scatter plot of input vs output
+        sns.scatterplot(x=x, y=y, s=5, alpha=0.3)
+        plt.xlabel("Input")
+        plt.ylabel("Output")
+        plt.title(f"{name} - Input vs Output (Epoch {epoch})")
+        plt.grid(True)
+
+        plt.tight_layout()
+        plt.savefig(os.path.join(save_dir, f"{name.replace('.', '_')}_epoch{epoch}_{sub}.png"))
+        plt.close()
+
+    norm_activations.clear()
 
 
 def main(wandb_logger, args, resume_preempt=False):
@@ -240,6 +284,10 @@ def main(wandb_logger, args, resume_preempt=False):
         dyt_predictor=dyt_predictor
     )
     target_encoder = copy.deepcopy(encoder)
+    norm_activations_encoder = {}
+    norm_activations_predictor = {}
+    register_norm_hooks(encoder, norm_activations=norm_activations_encoder)
+    register_norm_hooks(predictor, norm_activations_predictor)
 
     # -- make data transforms
     if mask_type == 'multiblock3d':
@@ -631,3 +679,9 @@ def main(wandb_logger, args, resume_preempt=False):
                 save_every_file = f'{tag}-e{epoch}.pth.tar'
                 save_every_path = os.path.join(folder, save_every_file)
                 save_checkpoint(epoch + 1, save_every_path)
+
+            visualize_norm_activations(norm_activations_encoder, epoch + 1, sub="encoder")
+            visualize_norm_activations(norm_activations_predictor, epoch + 1, sub="predictor")
+
+        norm_activations_encoder.clear()
+        norm_activations_predictor.clear()
