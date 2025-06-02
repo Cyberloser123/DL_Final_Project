@@ -496,25 +496,16 @@ def main(wandb_logger, args, resume_preempt=False):
                         h = apply_masks(h, masks_pred, concat=False)
                         return h
 
-                def forward_context(c, h):
+                def forward_context(c, h, timing_dict=None):
                     """
                     Returns list of tensors of shape [B, N, D], one for each
                     mask-pred.
                     """
-                    # print("===forward_context===")
-                    # print("c:", c.shape)
-                    # print("h:", h[0].shape, h[1].shape)
-                    # print("masks_enc:", masks_enc[0].shape, masks_enc[1].shape)
-                    # print("masks_enc:", len(masks_enc), masks_enc[0])
-                    z = encoder(c, masks_enc)
-                    # print("z:", z[0].shape, z[1].shape)
-                    # z[0] = torch.cat(z[:, 0], z[:, 0])
+                    z = encoder.module.forward(c, masks_enc, timing_dict=timing_dict)
                     if num_register_tokens > 0:
                         z[0] = z[0][:,num_register_tokens+1:]
                         z[1] = z[1][:,num_register_tokens+1:]
-                    # print("z_modify:", z[0].shape, z[1].shape)
                     z = predictor(z, h, masks_enc, masks_pred)
-                    # print("z_out:", z[0].shape, z[1].shape)
                     return z
 
                 def loss_fn(z, h):
@@ -530,9 +521,10 @@ def main(wandb_logger, args, resume_preempt=False):
 
                 # Step 1. Forward
                 loss_jepa, loss_reg = 0., 0.
+                timing_dict = {}
                 with torch.amp.autocast('cuda', dtype=dtype, enabled=mixed_precision):
                     h = forward_target(clips)
-                    z = forward_context(clips, h)
+                    z = forward_context(clips, h, timing_dict=timing_dict)
                     loss_jepa = loss_fn(z, h)  # jepa prediction loss
                     pstd_z = reg_fn(z)  # predictor variance across patches
                     loss_reg += torch.mean(F.relu(1.-pstd_z))
@@ -575,8 +567,9 @@ def main(wandb_logger, args, resume_preempt=False):
                     grad_stats,
                     grad_stats_pred,
                     optim_stats,
+                    timing_dict,
                 )
-            (loss, loss_jepa, loss_reg, _new_lr, _new_wd, grad_stats, grad_stats_pred, optim_stats,), gpu_etime_ms = gpu_timer(train_step)
+            (loss, loss_jepa, loss_reg, _new_lr, _new_wd, grad_stats, grad_stats_pred, optim_stats, timing_dict), gpu_etime_ms = gpu_timer(train_step)
             iter_elapsed_time_ms = (time.time() - itr_start_time) * 1000.
             loss_meter.update(loss)
             input_var = float(AllReduce.apply(clips.view(clips.shape[0], -1).var(dim=1).mean(dim=0)))
@@ -667,6 +660,10 @@ def main(wandb_logger, args, resume_preempt=False):
                         'input_var': input_var_meter.avg,
                         'input_var_min': input_var_min_meter.avg,
                     })
+
+                # log timing_dict
+                if timing_dict:
+                    wandb_logger.log(timing_dict)
             log_stats()
             assert not np.isnan(loss), 'loss is nan'
 

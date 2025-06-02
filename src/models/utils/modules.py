@@ -8,6 +8,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import time
 
 
 class MLP(nn.Module):
@@ -111,12 +112,29 @@ class Block(nn.Module):
             act_layer=act_layer,
             drop=drop)
 
-    def forward(self, x, return_attention=False, mask=None):
-        y, attn = self.attn(self.norm1(x), mask=mask)
+    def forward(self, x, return_attention=False, mask=None, timing_dict=None, block_idx=None):
+        # norm1 timing
+        start_norm1 = time.time()
+        norm1_out = self.norm1(x)
+        norm1_time = time.time() - start_norm1
+
+        y, attn = self.attn(norm1_out, mask=mask)
         if return_attention:
             return attn
         x = x + y
-        x = x + self.mlp(self.norm2(x))
+
+        # norm2 timing
+        start_norm2 = time.time()
+        norm2_out = self.norm2(x)
+        norm2_time = time.time() - start_norm2
+
+        x = x + self.mlp(norm2_out)
+
+        # 將 timing 記錄到 timing_dict
+        if timing_dict is not None and block_idx is not None:
+            timing_dict[f"block_{block_idx}_norm1"] = norm1_time
+            timing_dict[f"block_{block_idx}_norm2"] = norm2_time
+
         return x
 
 

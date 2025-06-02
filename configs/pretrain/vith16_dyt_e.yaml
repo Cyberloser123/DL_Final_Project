@@ -1,12 +1,15 @@
 app: vjepa
 nodes: 16
 tasks_per_node: 8
+model_structure:
+  num_register_tokens: 0
+  dyt_encoder: true
+  dyt_predictor: false
+
 data:
   dataset_type: VideoDataset
   datasets:
-    - /your_path_to_kinetics710_csv_file_index.csv
-    - /your_path_to_ssv2_csv_file_index.csv
-    - /your_path_to_howto100m_csv_file_index.csv
+    - /teamspace/studios/this_studio/train-computer187.csv
   decode_one_clip: true
   batch_size: 24
   num_clips: 1
@@ -30,7 +33,7 @@ data_aug:
   - 1.0
   reprob: 0.0
 logging:
-  folder: /your_absolute_file_path_for_saving_logs_and_checkpoints/
+  folder: exp-vith16-vanilla/
   write_tag: jepa
 loss:
   loss_exp: 1.0

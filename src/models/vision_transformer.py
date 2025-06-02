@@ -206,7 +206,7 @@ class VisionTransformer(nn.Module):
 
         return x
 
-    def forward(self, x, masks=None):
+    def forward(self, x, masks=None, timing_dict=None):
         """
         :param x: input image/video
         :param masks: indices of patch tokens to mask (remove)
@@ -233,7 +233,7 @@ class VisionTransformer(nn.Module):
         # Fwd prop
         outs = []
         for i, blk in enumerate(self.blocks):
-            x = blk(x, mask=masks)
+            x = blk(x, mask=masks, timing_dict=timing_dict, block_idx=i)
             if self.out_layers is not None and i in self.out_layers:
                 outs.append(self.norm(x))
 

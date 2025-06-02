@@ -14,15 +14,15 @@ class MultiMaskWrapper(nn.Module):
         super().__init__()
         self.backbone = backbone
 
-    def forward(self, x, masks=None):
+    def forward(self, x, masks=None, timing_dict=None, **kwargs):
         if masks is None:
-            return self.backbone(x)
+            return self.backbone(x, timing_dict=timing_dict, **kwargs)
 
         if (masks is not None) and not isinstance(masks, list):
             masks = [masks]
         outs = []
         for m in masks:
-            outs += [self.backbone(x, masks=m)]
+            outs += [self.backbone(x, masks=m, timing_dict=timing_dict, **kwargs)]
         return outs
 
 
